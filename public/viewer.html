@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PDF Viewer</title>
+    <link rel="stylesheet" href="view.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+  </head>
+  <body>
+    <div class="navbar">
+      <div class="navbar-title">PDF Co-Viewer</div>
+      <div>
+        <a href="#">Home</a>
+        <a href="#">Contact</a>
+      </div>
+    </div>
+    <h1>Viewer: Watch PDF</h1>
+    <canvas id="pdf-canvas"></canvas>
+    <div id="controls">
+      <span id="page-num">Page 1</span>
+    </div>
+
+    <script>
+      const socket = io();
+      let pdfDoc = null;
+      let currentPage = 1;
+      let totalPages = 0;
+      const pdfCanvas = document.getElementById("pdf-canvas");
+      const pdfContext = pdfCanvas.getContext("2d");
+      const pageNumDisplay = document.getElementById("page-num");
+
+      // Replace with actual session link
+      const pdfUrl = "/pdf"; // Placeholder session link
+
+      loadPDF(pdfUrl);
+
+      function loadPDF(filePath) {
+        pdfjsLib
+          .getDocument(filePath)
+          .promise.then((pdf) => {
+            pdfDoc = pdf;
+            totalPages = pdfDoc.numPages;
+            renderPage(currentPage);
+          })
+          .catch((err) => {
+            console.error("Error loading PDF:", err);
+          });
+      }
+
+      function renderPage(pageNum) {
+        pdfDoc
+          .getPage(pageNum)
+          .then((page) => {
+            const viewport = page.getViewport({ scale: 1 });
+            pdfCanvas.height = viewport.height;
+            pdfCanvas.width = viewport.width;
+
+            const renderContext = {
+              canvasContext: pdfContext,
+              viewport: viewport,
+            };
+
+            page
+              .render(renderContext)
+              .promise.then(() => {
+                pageNumDisplay.textContent = `Page ${currentPage} of ${totalPages}`;
+              })
+              .catch((err) => {
+                console.error("Error rendering page:", err);
+              });
+          })
+          .catch((err) => {
+            console.error("Error rendering page:", err);
+          });
+      }
+
+      // Listen to page changes from admin
+      socket.on("page-change", (page) => {
+        currentPage = page;
+        renderPage(currentPage);
+      });
+    </script>
+  </body>
+</html>
